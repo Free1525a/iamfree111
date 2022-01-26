@@ -10,6 +10,7 @@ import re
 
 from pyUltroid.dB.botchat_db import tag_add, who_tag
 from telethon.errors.rpcerrorlist import (
+    ChannelPrivateError,
     ChatWriteForbiddenError,
     MediaCaptionTooLongError,
     MediaEmptyError,
@@ -237,8 +238,18 @@ async def leave_ch_at(event):
         client = _client[client]
     except KeyError:
         return
+    try:
+        await client.delete_dialog(int(ch_id))
+    except UserNotParticipantError:
+        pass
+    except ChannelPrivateError:
+        return await event.edit(
+            "`[CANT_ACCESS_CHAT]` `Maybe already left or got banned.`"
+        )
+    except Exception as er:
+        LOGS.exception(er)
+        return await event.answer(str(er))
     name = (await client.get_entity(int(ch_id))).title
-    await client.delete_dialog(int(ch_id))
     await event.edit(get_string("userlogs_5").format(name))
 
 

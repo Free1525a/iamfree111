@@ -13,7 +13,13 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
-from pyUltroid.functions.helper import bash, fast_download, numerize, time_formatter
+from pyUltroid.functions.helper import (
+    bash,
+    fast_download,
+    humanbytes,
+    numerize,
+    time_formatter,
+)
 from pyUltroid.functions.ytdl import dler, get_buttons, get_formats
 from telethon import Button
 from telethon.errors.rpcerrorlist import FilePartLengthInvalidError, MediaEmptyError
@@ -122,7 +128,7 @@ async def _(event):
     owner=True,
 )
 async def _(e):
-    _e = e.pattern_match.group(1).decode("UTF-8")
+    _e = e.pattern_match.group(1).strip().decode("UTF-8")
     _lets_split = _e.split(":")
     _ytdl_data = await dler(e, _yt_base_url + _lets_split[1])
     _data = get_formats(_lets_split[0], _lets_split[1], _ytdl_data)
@@ -140,7 +146,7 @@ async def _(e):
     owner=True,
 )
 async def _(event):
-    url = event.pattern_match.group(1).decode("UTF-8")
+    url = event.pattern_match.group(1).strip().decode("UTF-8")
     lets_split = url.split(":")
     vid_id = lets_split[2]
     link = _yt_base_url + vid_id
@@ -184,8 +190,12 @@ async def _(event):
             else ytdl_data["description"][:100]
         )
         description = description or "None"
+        filepath = vid_id + f".{ext}"
+        if not os.path.exists(filepath):
+            filepath = filepath + f".{ext}"
+        size = os.path.getsize(filepath)
         file, _ = await event.client.fast_uploader(
-            vid_id + f".{ext}" * 2,
+            filepath,
             filename=title + "." + ext,
             show_progress=True,
             event=event,
@@ -235,6 +245,7 @@ async def _(event):
         filepath = vid_id + ".mkv"
         if not os.path.exists(filepath):
             filepath = filepath + ".webm"
+        size = os.path.getsize(filepath)
         file, _ = await event.client.fast_uploader(
             filepath,
             filename=title + ".mkv",
@@ -250,12 +261,14 @@ async def _(event):
                 supports_streaming=True,
             ),
         ]
-    text = f"**Title:** `{title}`\n\n"
-    text += f"`📝 Description:` `{description}`\n\n"
-    text += f"`⏳ Duration:` `{time_formatter(int(duration)*1000)}`\n"
-    text += f"`🎤 Artist:` `{artist}`\n"
-    text += f"`👀 Views`: `{views}`\n"
-    text += f"`👍 Likes`: `{likes}`\n"
+    description = description if description != "" else "None"
+    text = f"**Title: [{title}]({_yt_base_url}{vid_id})**\n\n"
+    text += f"`📝 Description: {description}\n\n"
+    text += f"⏳ Duration: {time_formatter(int(duration)*1000)}\n"
+    text += f"🎤 Artist: {artist}\n"
+    text += f"👀 Views: {views}\n"
+    text += f"👍 Likes: {likes}\n"
+    text += f"Size: {humanbytes(size)}`"
     button = Button.switch_inline("Search More", query="yt ", same_peer=True)
     try:
         await event.edit(
